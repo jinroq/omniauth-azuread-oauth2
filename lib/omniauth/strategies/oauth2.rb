@@ -32,6 +32,7 @@ module OmniAuth
       #   'authorization_code'
       option :grant_type,          'client_credentials'
       option :adminconsent_params, {}
+      option :adminconsent_options, %i[scope state]
 
       # @see https://docs.microsoft.com/en-us/graph/query-parameters#select-parameter
       # @see https://docs.microsoft.com/en-us/graph/api/resources/users?view=graph-rest-1.0#common-properties
@@ -141,6 +142,18 @@ module OmniAuth
         options.each_with_object({}) do |(key, value), hash|
           hash[key.to_sym] = value.is_a?(Hash) ? deep_symbolize(value) : value
         end
+      end
+
+      def options_for(option)
+        hash = {}
+        options.send(:"#{option}_options").select { |key| options[key] }.each do |key|
+          hash[key.to_sym] = if options[key].respond_to?(:call)
+                               options[key].call(env)
+                             else
+                               options[key]
+                             end
+        end
+        hash
       end
 
       # An error that is indicated in the OAuth 2.0 callback.
