@@ -4,7 +4,7 @@ require "oauth2/strategy/azuread_client_credentials"
 
 module OAuth2
   # OAuth2::Client extensional class
-  class ClientExt < Client
+  class AzureADClient < Client
     # for Azure AD
     def adminconsent_url(params = {})
       params = (params || {}).merge(redirection_params)
