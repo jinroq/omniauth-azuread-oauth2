@@ -55,22 +55,10 @@ module OmniAuth
       def callback_phase
         error = request.params['error_reason'] || request.params['error']
 
-        if options.azuread_account_type == 'complex'
-          options.client_options.merge(token_url: '/common/oauth2/v2.0/token')
-        elsif options.azuread_account_type == 'multiple'
-          target_tenant_id = request.params["tenant"]
-          options.client_options.merge(token_url: "/#{target_tenant_id}/oauth2/v2.0/token")
-        elsif options.azuread_account_type == 'single'
-          raise 'error' unless options.tenant_id
-          options.client_options.merge(token_url: "/#{options.tenant_id}/oauth2/v2.0/token")
-        else
-          raise 'error'
-        end
-
         if options.grant_type == 'client_credentials'
           self.access_token = client.azuread_client_credentials.get_token(
-            { 'client_id'     => client.id,
-              'client_secret' => client.secret,
+            { 'client_id'     => options.client_id,
+              'client_secret' => options.client_secret,
               'scope'         => 'https://graph.microsoft.com/.default',
             }
           )
@@ -92,7 +80,23 @@ module OmniAuth
       end
 
       def client
-        ::OAuth2::AzureADClient.new(options.client_id, options.client_secret, deep_symbolize(options.client_options))
+        if options.client_options.token_url.nil?
+          if options.azuread_account_type == 'complex'
+            options.client_options.token_url = '/common/oauth2/v2.0/token'
+          elsif options.azuread_account_type == 'multiple'
+            target_tenant_id = request.params["tenant"]
+            options.client_options.token_url = "/#{target_tenant_id}/oauth2/v2.0/token"
+          elsif options.azuread_account_type == 'single'
+            raise 'error' unless options.tenant_id
+            options.client_options.token_url = "/#{options.tenant_id}/oauth2/v2.0/token"
+          else
+            raise 'error'
+          end
+        end
+
+        ::OAuth2::AzureADClient.new(options.client_id,
+                                    options.client_secret,
+                                    deep_symbolize(options.client_options))
       end
 
       def adminconsent_params
@@ -132,7 +136,6 @@ module OmniAuth
 
       # @override
       def callback_url
-        full_host + script_name + callback_path + query_string
         options[:redirect_uri] || (full_host + script_name + callback_path)
       end
 
